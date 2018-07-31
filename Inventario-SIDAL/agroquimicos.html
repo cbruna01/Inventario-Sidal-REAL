@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Inventario</title>
+
+    <!-- FONTS -->
+
+    <link href="https://fonts.googleapis.com/css?family=Roboto" rel="stylesheet">
+
+    <!-- ICON -->
+
+
+    <link rel="shortcut icon" type="image/png" href="img/rocket.png">
+
+    <!-- JQUERY -->
+
+
+    <script src="js/jquery-3.3.1.min.js"></script>
+    <script src="js/jquery.dataTables.min.js"></script>
+
+    <!-- BOOTSTRAP -->
+
+
+    <link
+      rel="stylesheet"
+      href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css"
+      integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u"
+      crossorigin="anonymous">
+
+    <link
+      rel="stylesheet"
+      href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css"
+      integrity="sha384-rHyoN1iRsVXV4nD0JutlnGaslCJuC7uwjduW9SVrLvRYooPp2bWYgmgJQIXwl/Sp"
+      crossorigin="anonymous">
+
+    <script
+      src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"
+      integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa"
+      crossorigin="anonymous">
+    </script>
+
+    <!-- FIREBASE -->
+
+
+    <script src="https://www.gstatic.com/firebasejs/4.12.1/firebase.js"></script>
+    <script>
+      var config = {
+        apiKey: "AIzaSyAvolaKsROR11_48LpKiiC2zMB6d-9_nk4",
+        authDomain: "inventario-sidal.firebaseapp.com",
+        databaseURL: "https://inventario-sidal.firebaseio.com",
+        projectId: "inventario-sidal",
+        storageBucket: "inventario-sidal.appspot.com",
+        messagingSenderId: "243640727250"
+      };
+      firebase.initializeApp(config);
+    </script>
+
+    <!-- DATATABLES -->
+
+
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/v/bs/dt-1.10.16/r-2.2.1/datatables.min.css"/>
+
+    <script type="text/javascript" src="https://cdn.datatables.net/v/bs/dt-1.10.16/r-2.2.1/datatables.min.js">
+    </script>
+
+    <!-- JSPDF -->
+
+
+    <script src="js/jspdf.min.js"></script>
+
+    <!-- LOCAL -->
+
+
+    <script src="js/datos.js"></script>
+    <link rel="stylesheet" type="text/css" href="./css/styles.css">
+
+    <!-- ALERTIFY -->
+
+    <link rel="stylesheet" type="text/css" href="./css/alertify.css">
+    <link rel="stylesheet" type="text/css" href="./css/themes/default.css">
+    <script src="js/alertify.js"></script>
+
+    <!-- SCRIPT CONFIGURACIÓN DATATABLES -->
+
+
+    <script>
+    $(document).ready(function()
+      {
+        $('#tabla-datos').dataTable( {
+          "columnDefs": [
+            { "orderable": false, "targets": '_all' }
+          ],
+          "bLengthChange": false,
+          "order": [[ 1, "desc" ]],
+          "drawCallback": function( settings ) {
+            var elementosEditables = document.getElementsByClassName("editar");
+            for (var i = 0; i < elementosEditables.length; i++) {
+              elementosEditables[i].addEventListener("click", editarDato, false);
+            }
+            var elementosBorrables = document.getElementsByClassName("borrar");
+            for (var i = 0; i < elementosBorrables.length; i++) {
+              elementosBorrables[i].addEventListener("click", borrarDato, false);
+            }
+            var elementosAceptables = document.getElementsByClassName("yes");
+            for (var i = 0; i < elementosAceptables.length; i++) {
+              elementosAceptables[i].addEventListener("click", agregarQuitarElementos, false);
+            }
+          },
+          /*createdRow: function ( tr ) {
+              $('.editar', tr).on('click', editarDato);
+              $('.borrar', tr).on('click', borrarDato);
+              $('.yes', tr).on('click', agregarQuitarElementos);
+          },
+          createdCell: function () {
+            $('.editar', tr).on('click', editarDato);
+            $('.borrar', tr).on('click', borrarDato);
+            $('.yes', tr).on('click', agregarQuitarElementos);
+          },*/
+          "language": {
+            "lengthMenu": "Mostrar _MENU_ registros por página",
+            "zeroRecords": "</br>",
+            "info": "Página _PAGE_ de _PAGES_",
+            "infoEmpty": "",
+            "infoFiltered": "",
+            "search":         "",
+            "searchPlaceholder": "Buscar...",
+            "paginate": {
+              "first":      "Primera",
+              "last":       "Última",
+              "next":       "Siguiente",
+              "previous":   "Anterior"
+            }
+          },
+          "pageLength" : 10
+       });
+
+      var rootRef=firebase.database().ref().child("productos-agroquimicos")
+      var table = $('#tabla-datos').DataTable();
+
+      //------------------------------- AGREGAR ------------------------------//
+
+      rootRef.on("child_added",snap => {
+      var dataSet = [snap.child("nombre").val(),
+                     snap.child("compuesto").val(),
+                     snap.child("formato").val(),
+                     snap.child("presentacion").val(),
+                     snap.child("dosis").val(),
+                     snap.child("control").val(),
+                     snap.child("cantidad").val(),
+                     snap.child("recomendaciones").val(),
+                     '<input style="width: 35pt; height: 16pt" type="number" min="0" value="" id="'+ snap.key + 'input-agregar" class="" autocomplete="off">',
+                     '<select style="width: 60pt; height: 16pt;" name="control" id="'+ snap.key+ "select-agregar" +'">'+
+                       '<option value="Agregar">Agregar</option>' +
+                       '<option value="Quitar">Quitar</option>' +
+                     '</select>',
+                     '<button class="btn btn-primary btn-xs yes" data="'
+                     + snap.key +'"><span class="glyphicon glyphicon-ok"></span></button>',
+                     '<button id="btn-editar" class="btn btn-warning btn-xs editar" data="'
+                     + snap.key +'"><span class="glyphicon glyphicon-pencil"></span></button>',
+                     '<button class="btn btn-danger btn-xs borrar" data="'
+                     + snap.key +'"><span class="glyphicon glyphicon-trash"></span></button>'];
+
+      table.rows.add([dataSet]).nodes()
+                               .to$()
+                               .addClass(snap.key);
+
+
+      table.draw();
+
+
+      });
+
+      //------------------------------- EDITAR ------------------------------//
+
+      rootRef.on("child_changed", snap => {
+        document.getElementsByClassName(snap.key)[0].innerHTML =
+         "<tr id='" + snap.key +"'>" +
+            "<td>"+ snap.child("nombre").val() + "</td>"+
+            "<td>" + snap.child("compuesto").val() + "</td>"+
+            "<td>" + snap.child("formato").val() + "</td>"+
+            "<td>" + snap.child("presentacion").val() + "</td>"+
+            "<td>" + snap.child("dosis").val() + "</td>"+
+            "<td>" + snap.child("control").val() + "</td>"+
+            "<td>" + snap.child("cantidad").val() + "</td>"+
+            "<td>" + snap.child("recomendaciones").val() + "</td>"+
+            "<td>" + '<input style="width: 35pt; height: 16pt" type="number" min="0" value="" id="' + snap.key + "input-agregar" + '" class="" autocomplete="off">' + "</td>" +
+            "<td>" + '<select style="width: 60pt; height: 16pt;" name="control" id="'+ snap.key+ "select-agregar" +'">'+
+              '<option value="Agregar">Agregar</option>' +
+              '<option value="Quitar">Quitar</option>' +
+            '</select>' + "</td>" +
+            "<td>" +'<button id="" class="btn btn-primary btn-xs yes" data="'
+            + snap.key +'"><span class="glyphicon glyphicon-ok"></span></button>' + "</td>"+
+            "<td>" +'<button id="btn-editar" class="btn btn-warning btn-xs editar" data="'
+            + snap.key +'"><span class="glyphicon glyphicon-pencil"></span></button>' + "</td>"+
+            "<td>" + '<button class="btn btn-danger btn-xs borrar" data="'
+            + snap.key +'"><span class="glyphicon glyphicon-trash"></span></button>' + "</td>"+
+          "</tr>";
+
+          /*$(".editar").on("click", editarDato);
+          $(".borrar").on("click", borrarDato);
+          $(".yes").on("click", agregarQuitarElementos);*/
+
+          /*var elementosEditables = document.getElementsByClassName("editar");
+          for (var i = 0; i < elementosEditables.length; i++) {
+            elementosEditables[i].addEventListener("click", editarDato, false);
+          }
+          var elementosBorrables = document.getElementsByClassName("borrar");
+          for (var i = 0; i < elementosBorrables.length; i++) {
+            elementosBorrables[i].addEventListener("click", borrarDato, false);
+          }
+          var elementosAceptables = document.getElementsByClassName("yes");
+          for (var i = 0; i < elementosAceptables.length; i++) {
+            elementosAceptables[i].addEventListener("click", agregarQuitarElementos, false);
+          }*/
+          alertify.success("Editado con éxito");
+      });
+
+      rootRef.on("child_removed", snap => {
+        alertify.success("Producto eliminado");
+      });
+      });
+    </script>
+  </head>
+  <body>
+    <nav style="border-radius: 0px; background: #2b3d53; border: none;" class="navbar navbar-inverse">
+      <div class="container-fluid">
+        <div class="navbar-header inline-block">
+          <a style="display: inline; width:198pt; height:35pt; display: inline;" class="navbar-brand" href="agroquimicos.html">
+            <h3 style="display: inline; color: white;">Inventario</h3>
+            <img style="display: inline; margin-top: -4pt; width:76pt; height:25pt" src="img/logo2.png" class="img-responsive">
+          </a>
+        </div>
+        <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+          <ul class="nav navbar-nav navbar-right">
+            <li><a onmouseover="this.style.color='#cfcfcf';" onmouseout="this.style.color='white';" style="color: white" href="agroquimicos.html">Productos Agroquímicos</a></li>
+            <li><a onmouseover="this.style.color='#cfcfcf';" onmouseout="this.style.color='white';" style="color: white" href="animales.html">Animales</a></li>
+            <li><div style="width: 1px; height: 18pt; background: white; margin-top: 9pt;"></div></li>
+            <li><a onmouseover="this.style.color='#cfcfcf';" onmouseout="this.style.color='white';" style="color: white" href="calculadora.html">Conversión Unidades</a></li>
+            <!-- <button type="button" id="btn-usuarios" style="display: none;" class="btn btn-success btn-sm navbar-btn" name="button" onclick="location.href = 'https://console.firebase.google.com/u/0/project/inventario-sidal/authentication/users';">Gestionar Usuarios</button>
+            <button type="button" class="btn btn-info btn-sm navbar-btn" name="button" onclick="logout()">Cerrar Sesión</button> -->
+            <li><div class="dropdown">
+              <button style="background: transparent; color: white; border: none; margin-top: 5pt;" class="btn dropdown-toggle glyphicon glyphicon-menu-hamburger" type="button" id="dropdownMenu1" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
+              </button>
+              <ul class="dropdown-menu" aria-labelledby="dropdownMenu1">
+                <li style="display: none;" id="btn-usuarios"><a href=" https://console.firebase.google.com/u/0/project/inventario-sidal/authentication/users"><span style="color: grey;" class="glyphicon glyphicon-user"></span> Gestionar Usuarios</a></li>
+                <li><a href="#" id="btn-cerrarSesion"><span style="color: grey;" class="glyphicon glyphicon-remove"></span> Cerrar Sesión</a></li>
+              </ul>
+            </div></li>
+          </ul>
+        </div>
+      </div>
+    </nav>
+    <div class="container">
+      <div id="modal" class="modal">
+        <div class="modal-content">
+          <!--<div style="margin: auto;margin-left: -16pt; margin-top: -15pt; width: 600px; height: 30pt; background: #2b3d53; padding-bottom: 5pt; padding-top: 5pt;">
+            <span>
+              <img src="img/rocket.png" style="margin-left: 35px; margin-bottom: 2px; width: 20px; height: 20px;" alt="">
+          </span>
+            <span style="color: white; padding-left: 5pt; padding-top: 20px; font-size: 15pt;">Agregar Producto
+            </span>
+          </div> -->
+          <span style="font-size: 25pt; margin-top: 5px; margin-right: 15px;" class="close">&times;</span>
+          <form style="font-size: 10pt" id="form-datos" autocomplete="off">
+            <div class="form-group col-sm-12">
+              <label for="nombre">Nombre comercial <span style="color: #c53531">*</span></label>
+              <input type="text" name="nombre" value="" id="nombre" class="form-control" autocomplete="off">
+            </div>
+
+            <div class="form-group col-sm-12">
+              <div style="margin:0; padding: 0;" class="col-sm-4">
+                <label for="Compuesto">Compuesto <span style="color: #c53531">*</span></label>
+                <select style="width: 131pt; height:27pt;"name="compuesto" id="compuesto"form="compuesto-form">
+                  <option value="Glifosato">Glifosato</option>
+                  <option value="Glufosinato">Glufosinato</option>
+                </select>
+              </div>
+
+              <div style="margin:0; padding: 0;" class="col-sm-4">
+                <label for="formato">Formato <span style="color: #c53531">*</span></label>
+                <select style="width: 131pt; height:27pt;" name="formato" id="formato" form="formato-form">
+                  <option value="Líquido">Líquido</option>
+                  <option value="Compuesto Dispersable">Compuesto Dispersable</option>
+                </select>
+              </div>
+
+              <div style="margin:0; padding: 0;" class="col-sm-4">
+                <label for="control">Tipo de control <span style="color: #c53531">*</span></label>
+                <select style="width: 131pt; height:27pt;" name="control" id="control" form="control-form">
+                  <option value="Herbicida">Herbicida</option>
+                  <option value="Fungicida">Fungicida</option>
+                  <option value="Pesticida">Pesticida</option>
+                  <option value="Fertilizante foliar">Fertilizante foliar</option>
+                  <option value="Surfactante">Surfactante</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-group col-sm-12">
+              <div style="margin:0; padding: 0;" class="col-sm-6">
+                <label for="valor">Presentación (litros) <span style="color: #c53531">*</span></label>
+                <input style="width: 197pt;" type="number" min="0" name="presentacion" value="" id="presentacion" class="form-control" autocomplete="off">
+              </div>
+
+              <div style="margin:0; padding: 0;" class="col-sm-6">
+                <label for="dosis">Dosis Recomendada (l/ha) <span style="color: #c53531">*</span></label>
+                <input style="width: 198pt;" type="number" min="0" name="dosis" value="" id="dosis" class="form-control" step="0.1" autocomplete="off">
+              </div>
+            </div>
+
+            <div class="form-group col-sm-12">
+            </div>
+            <div class="form-group col-sm-12">
+              <div style="margin:0; padding: 0;" class="col-sm-12">
+                <label for="recomendaciones">Recomendaciones de seguridad</label>
+                <input type="text" name="recomendaciones" value="" id="recomendaciones" class="form-control" step="0.1" autocomplete="off">
+              </div>
+            </div>
+            <input style="margin-left: 11pt; margin-right: 11pt; width:396pt; "type="submit" name="enviar" value="Agregar" class="btn btn-primary btn-lg" id="btn-enviar">
+          </form>
+        </div>
+      </div>
+      <div class=" col-sm-12 row" id="row">
+        <div class="col-sm-12 card">
+          <h3>Productos Agrícolas</h3>
+          <div class="table-responsive">
+            <table id="tabla-datos" class="table table-hover compact">
+              <thead>
+                <tr>
+                  <th>Nombre</th>
+                  <th>Compuesto</th>
+                  <th>Formato</th>
+                  <th>Presentación</th>
+                  <th>Dosis</th>
+                  <th>Tipo de Control</th>
+                  <th>Cantidad</th>
+
+                  <th>Recomendaciones</th>
+                  <th style="width: 45pt"></th>
+                  <th style="width: 65pt"></th>
+                  <th></th>
+                  <th></th>
+                  <th>
+                    <button type="button" name="button" class="btn btn-success btn-xs glyphicon glyphicon-plus" id="btn-agregar"></button>
+                  </th>
+                </tr>
+              </thead>
+              <tbody id="tbody-tabla-datos">
+                <div style="display: none; margin-top: 20px" id="preloader">
+                    <div id="loader"></div>
+                </div>
+              </tbody>
+            </table>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
